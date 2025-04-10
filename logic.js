@@ -64,7 +64,7 @@ const playerColour = Colour.hex('#72b1e5');
 const playerRadius = 48;
 const playerSpeed = 600;
 const playerMaxHealth = 100;
-const playerTrailFadoutRate = 3.0;
+const playerTrailFadoutRate = 4.0;
 
 const bulletColour = Colour.hex('#e7b80b');
 const bulletRadius = 6;
@@ -481,14 +481,13 @@ class Bullet {
     }
 }
 
-// Player class
+// Trail class
 
-class Player {
-    health = playerMaxHealth;
+class Trail {
     trail = [];
 
-    constructor(pos) {
-        this.pos = pos;
+    constructor(radius) {
+        this.radius = radius;
     }
 
     render(camera) {
@@ -497,8 +496,40 @@ class Player {
         // Trail cones towards the end
 
         for (let i = 0; i < n; i++) {
-            camera.fillCircle(this.trail[i].pos, playerRadius * (i / n), playerColour.withAlpha(this.trail[i].alpha)); // rev lerp (i / n)
+            camera.fillCircle(this.trail[i].pos, this.radius * (i / n), playerColour.withAlpha(0.3 * this.trail[i].alpha)); // rev lerp (i / n)
         }
+    }
+
+    update(dt) {
+        // Shows player trail for camera reference
+
+        for (let dot of this.trail) {
+            dot.alpha -= playerTrailFadoutRate * dt;
+        }
+
+        this.trail = this.trail.filter(x => x.alpha > 0.0);
+    }
+
+    push(pos) {
+        this.trail.push({
+            pos: pos,
+            alpha: 1,
+        });
+    }
+}
+
+// Player class
+
+class Player {
+    health = playerMaxHealth;
+    trail = new Trail(playerRadius);
+
+    constructor(pos) {
+        this.pos = pos;
+    }
+
+    render(camera) {
+        this.trail.render(camera);
 
         if (this.health > 0) {
             camera.fillCircle(this.pos, playerRadius, playerColour);
@@ -506,20 +537,9 @@ class Player {
     }
 
     update(dt, vel) {
+        this.trail.push(this.pos);
         this.pos = this.pos.add(vel.scale(dt));
-
-        // Shows player trail for camera reference
-
-        this.trail.push({
-            pos: this.pos,
-            alpha: 0.75,
-        });
-
-        for (let dot of this.trail) {
-            dot.alpha -= playerTrailFadoutRate * dt;
-        }
-
-        this.trail = this.trail.filter(x => x.alpha > 0.0);
+        this.trail.update(dt);
     }
 
     shoot(target) {
