@@ -1,12 +1,19 @@
 # About
 
-Practicing writing JavaScript while building a 2D shooter game.
+A top-down 2D shooter game written in plain JavaScript.
+
+# Usage
+
+The main goals of the player are to avoid dying and collect as many points as possible.
 
 # Quick Start
 
 This project is created in vanilla JS, to get it running:
 
-1. Open index.html in a browser
+1. Open index.html in a browser if you copy the repo or visit the GitHub Pages link
 2. To make the object move around the canvas press 'W', 'A', 'S' or 'D'
-3. To shoot press 'left mouse button'
-4. Press 'space' to pause/resume the game
+3. To aim move the mouse
+4. To shoot press the 'LEFT MOUSE CLICK'
+5. Press 'SPACEBAR' to pause/resume the game
+
+Good luck and have fun!
