@@ -223,7 +223,7 @@ let lastHitTime = 0;
 const hitCooldown = 0.1;
 
 let lastDeathTime = 0;
-const deathCooldown = 0.5;
+const deathCooldown = 1;
 
 const audioPlay = async url => {
     try {
@@ -492,8 +492,12 @@ class Player {
     }
 
     render(camera) {
-        for (let dot of this.trail) {
-            camera.fillCircle(dot.pos, playerRadius, playerColour.withAlpha(dot.alpha));
+        const n = this.trail.length;
+
+        // Trail cones towards the end
+
+        for (let i = 0; i < n; i++) {
+            camera.fillCircle(this.trail[i].pos, playerRadius * (i / n), playerColour.withAlpha(this.trail[i].alpha)); // rev lerp (i / n)
         }
 
         if (this.health > 0) {
@@ -502,12 +506,14 @@ class Player {
     }
 
     update(dt, vel) {
-        this.trail.push({
-            pos: this.pos,
-            alpha: 0.5,
-        });
         this.pos = this.pos.add(vel.scale(dt));
 
+        // Shows player trail for camera reference
+
+        this.trail.push({
+            pos: this.pos,
+            alpha: 0.75,
+        });
 
         for (let dot of this.trail) {
             dot.alpha -= playerTrailFadoutRate * dt;
