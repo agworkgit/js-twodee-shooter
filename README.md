@@ -1,7 +1,6 @@
 # About
 
-Practicing writing JavaScript while building a 2D shooter game. <br>
-\*This is not part of the Scriba material, extra-curricular
+Practicing writing JavaScript while building a 2D shooter game.
 
 # Quick Start
 
