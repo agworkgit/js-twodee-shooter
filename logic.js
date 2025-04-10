@@ -79,6 +79,7 @@ const enemySpawnDistance = 500;
 const enemyDamage = playerMaxHealth / 5;
 const enemyKillHealer = playerMaxHealth / 20;
 const enemyKillScore = 100;
+const enemyTrailFadoutRate = 2.0;
 
 const particleCount = 50;
 const particleRadius = 5;
@@ -441,9 +442,50 @@ class TutorialPopup {
     }
 }
 
+// Trail class
+
+class Trail {
+    trail = [];
+
+    constructor(radius, colour, fadeout) {
+        this.radius = radius;
+        this.colour = colour;
+        this.fadeout = fadeout;
+    }
+
+    render(camera) {
+        const n = this.trail.length;
+
+        // Trail cones towards the end
+
+        for (let i = 0; i < n; i++) {
+            camera.fillCircle(this.trail[i].pos, this.radius * (i / n), this.colour.withAlpha(0.3 * this.trail[i].alpha)); // rev lerp (i / n)
+        }
+    }
+
+    update(dt) {
+        // Shows player trail for camera reference
+
+        for (let dot of this.trail) {
+            dot.alpha -= this.fadeout * dt;
+        }
+
+        this.trail = this.trail.filter(x => x.alpha > 0.0);
+    }
+
+    push(pos) {
+        this.trail.push({
+            pos: pos,
+            alpha: 1,
+        });
+    }
+}
+
 // Enemies
 
 class Enemy {
+    trail = new Trail(enemyRadius, enemyColour, enemyTrailFadoutRate);
+
     constructor(pos) {
         this.pos = pos;
         this.dead = false;
@@ -454,10 +496,13 @@ class Enemy {
             .sub(this.pos)
             .normalise()
             .scale(enemySpeed * dt);
+        this.trail.push(this.pos);
         this.pos = this.pos.add(vel);
+        this.trail.update(dt);
     }
 
     render(camera) {
+        this.trail.render(camera);
         camera.fillCircle(this.pos, enemyRadius, enemyColour);
     }
 }
@@ -481,48 +526,11 @@ class Bullet {
     }
 }
 
-// Trail class
-
-class Trail {
-    trail = [];
-
-    constructor(radius) {
-        this.radius = radius;
-    }
-
-    render(camera) {
-        const n = this.trail.length;
-
-        // Trail cones towards the end
-
-        for (let i = 0; i < n; i++) {
-            camera.fillCircle(this.trail[i].pos, this.radius * (i / n), playerColour.withAlpha(0.3 * this.trail[i].alpha)); // rev lerp (i / n)
-        }
-    }
-
-    update(dt) {
-        // Shows player trail for camera reference
-
-        for (let dot of this.trail) {
-            dot.alpha -= playerTrailFadoutRate * dt;
-        }
-
-        this.trail = this.trail.filter(x => x.alpha > 0.0);
-    }
-
-    push(pos) {
-        this.trail.push({
-            pos: pos,
-            alpha: 1,
-        });
-    }
-}
-
 // Player class
 
 class Player {
     health = playerMaxHealth;
-    trail = new Trail(playerRadius);
+    trail = new Trail(playerRadius, playerColour, playerTrailFadoutRate);
 
     constructor(pos) {
         this.pos = pos;
