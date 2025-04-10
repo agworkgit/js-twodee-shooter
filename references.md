@@ -12,3 +12,4 @@
 -   Window Resize API - https://developer.mozilla.org/en-US/docs/Web/API/Window/resize_event
 -   Bullet Time VFX - https://en.wikipedia.org/wiki/Bullet_time
 -   JS Math - https://thinkingbox.medium.com/6-simple-js-math-functions-you-can-use-everyday-68f8d5b58514
+-   AudioContext API - https://web.dev/articles/webaudio-intro
