@@ -167,25 +167,19 @@ class Camera {
     // For health bar
 
     strokeRect(x, y, w, h, colour) {
-        const screenPos = this.toScreen(new v2(x, y));
-
         this.context.strokeStyle = colour.toRgba();
         this.context.lineWidth = 3;
-        this.context.strokeRect(screenPos.x, screenPos.y, w, h);
+        this.context.strokeRect(x, y, w, h);
     }
 
     fillRect(x, y, w, h, colour) {
-        const screenPos = this.toScreen(new v2(x, y));
-
         this.context.fillStyle = globalFillFilter(colour).toRgba();
-        this.context.fillRect(screenPos.x, screenPos.y, w, h);
+        this.context.fillRect(x, y, w, h);
     }
 
     // For score
 
     scoreText(x, y, text, colour) {
-        const screenPos = this.toScreen(new v2(x, y));
-
         this.context.fillStyle = colour.toRgba();
 
         // If small screen update font
@@ -197,7 +191,7 @@ class Camera {
         }
 
         this.context.textAlign = 'center';
-        this.context.fillText(text, screenPos.x, screenPos.y);
+        this.context.fillText(text, x, y);
     }
 
     // Pause text
@@ -676,23 +670,12 @@ class Game {
             this.tutorial.render(this.camera);
         }
 
-        // Health Bar - fixed to top center
-        const healthBarWidth = globalWidth / 2;
-        const healthBarX = (globalWidth - healthBarWidth) / 2;
-        const healthBarY = 20;
+        // Health bar render
+        this.camera.fillRect(width / 4, height - height / 13, (globalWidth / 2) * (this.player.health / playerMaxHealth), healthBarHeight, healthBarColour.withAlpha(0.9));
+        this.camera.strokeRect(width / 4, height - height / 13, globalWidth / 2, healthBarHeight, messageColour.withAlpha(0.9)); // frame
 
-        context.fillStyle = healthBarColour.withAlpha(0.9).toRgba();
-        context.fillRect(healthBarX, healthBarY, healthBarWidth * (this.player.health / playerMaxHealth), healthBarHeight);
-
-        context.strokeStyle = messageColour.withAlpha(0.9).toRgba();
-        context.lineWidth = 3;
-        context.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-
-        // Score Text - fixed to top center
-        context.fillStyle = messageColour.withAlpha(0.5).toRgba();
-        context.font = (globalWidth < 640 ? smallFont : normalFont) + " VT323, monospace";
-        context.textAlign = 'center';
-        context.fillText(`SCORE: ${this.score}`, globalWidth / 2, 70);
+        // Score render
+        this.camera.scoreText(width / 2, height / 13, `SCORE: ${this.score}`, messageColour.withAlpha(0.5));
     }
 
     spawnEnemy() {
