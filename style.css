@@ -1,0 +1,15 @@
+@font-face {
+    font-family: 'VT323';
+    src: url(./assets/fonts/VT323/VT323-Regular.ttf);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
+    background: #181818;
+    height: 100vh;
+}
