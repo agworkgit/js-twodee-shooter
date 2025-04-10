@@ -60,6 +60,39 @@ class Colour {
     }
 }
 
+const playerColour = Colour.hex('#72b1e5');
+const playerRadius = 48;
+const playerSpeed = 600;
+const playerMaxHealth = 100;
+
+const bulletColour = Colour.hex('#e7b80b');
+const bulletRadius = 6;
+const bulletSpeed = playerSpeed * 3;
+const bulletLifetime = 5; // important - prevents memory overflow
+
+const enemyColour = Colour.hex('#df7171');
+const enemyRadius = playerRadius - 6;
+const enemySpeed = playerSpeed / 3;
+const enemySpawnCooldown = 1;
+const enemySpawnDistance = 500;
+const enemyDamage = playerMaxHealth / 5;
+const enemyKillHealer = playerMaxHealth / 20;
+const enemyKillScore = 100;
+
+const particleCount = 50;
+const particleRadius = 5;
+const particleMagnitude = bulletSpeed;
+const particleLifetime = 1;
+// const particleColour = Colour.hex('#ffedb8'); - replaced by playerColour and enemyColour for particleBurst
+
+const messageColour = Colour.hex('#ffffff');
+const smallFont = '18px';
+const normalFont = '32px';
+
+const healthBarHeight = 15;
+const healthBarColour = Colour.hex('#51bb51');
+
+
 // b&w for pause screen
 
 function grayScaleFilter(colour) {
@@ -85,13 +118,31 @@ class Camera {
     }
 
     update(dt) {
-
+        this.pos = this.pos.add(this.vel.scale(dt));
     }
 
     clear() {
         const width = this.context.canvas.width;
         const height = this.context.canvas.height;
         this.context.clearRect(0, 0, width, height);
+    }
+
+    toWorld(point) {
+        const width = this.context.canvas.width;
+        const height = this.context.canvas.height;
+
+        return point.sub(new v2(width / 2, height / 2)).add(this.pos);
+    }
+
+    toScreen(point) {
+        const width = this.context.canvas.width;
+        const height = this.context.canvas.height;
+
+        return point.sub(this.pos).add(new v2(width / 2, height / 2));
+    }
+
+    setTarget(target) {
+        this.vel = target.sub(this.pos);
     }
 
     width() {
@@ -105,7 +156,7 @@ class Camera {
     // Draw Shapes
 
     fillCircle(centre, playerRadius, colour) {
-        let screenCentre = centre.sub(this.pos);
+        const screenCentre = this.toScreen(centre);
 
         this.context.fillStyle = globalFillFilter(colour).toRgba();
         this.context.beginPath();
@@ -115,14 +166,16 @@ class Camera {
 
     // For health bar
 
-    strokeRect(x, y, w, h) {
-        this.context.strokeStyle = 'rgba(255,255,255,0.8)';
+    strokeRect(x, y, w, h, colour) {
+        const screenPos = this.toScreen(new v2(x, y));
+
+        this.context.strokeStyle = colour.toRgba();
         this.context.lineWidth = 3;
-        this.context.strokeRect(x, y, w, h);
+        this.context.strokeRect(screenPos.x, screenPos.y, w, h);
     }
 
     fillRect(x, y, w, h, colour) {
-        let screenPos = new v2(x, y).sub(this.pos);
+        const screenPos = this.toScreen(new v2(x, y));
 
         this.context.fillStyle = globalFillFilter(colour).toRgba();
         this.context.fillRect(screenPos.x, screenPos.y, w, h);
@@ -131,7 +184,7 @@ class Camera {
     // For score
 
     scoreText(x, y, text, colour) {
-        let screenPos = new v2(x, y).sub(this.pos);
+        const screenPos = this.toScreen(new v2(x, y));
 
         this.context.fillStyle = colour.toRgba();
 
@@ -193,38 +246,6 @@ const audioPlay = async url => {
         console.warn('Audio failed:', e);
     }
 };
-
-const playerColour = Colour.hex('#72b1e5');
-const playerRadius = 48;
-const playerSpeed = 600;
-const playerMaxHealth = 100;
-
-const bulletColour = Colour.hex('#e7b80b');
-const bulletRadius = 6;
-const bulletSpeed = playerSpeed * 3;
-const bulletLifetime = 5; // important - prevents memory overflow
-
-const enemyColour = Colour.hex('#df7171');
-const enemyRadius = playerRadius - 6;
-const enemySpeed = playerSpeed / 3;
-const enemySpawnCooldown = 1;
-const enemySpawnDistance = 500;
-const enemyDamage = playerMaxHealth / 5;
-const enemyKillHealer = playerMaxHealth / 20;
-const enemyKillScore = 100;
-
-const particleCount = 50;
-const particleRadius = 5;
-const particleMagnitude = bulletSpeed;
-const particleLifetime = 1;
-// const particleColour = Colour.hex('#ffedb8'); - replaced by playerColour and enemyColour for particleBurst
-
-const messageColour = Colour.hex('#ffffff');
-const smallFont = '18px';
-const normalFont = '32px';
-
-const healthBarHeight = 15;
-const healthBarColour = Colour.hex('#51bb51');
 
 // Handle Window Resize
 
@@ -523,9 +544,9 @@ class Player {
 
 class Game {
     constructor(context) {
-        this.player = new Player(new v2(globalWidth / 2, globalHeight / 2));
+        this.player = new Player(new v2(0, 0));
         this.score = 0;
-        this.mousePos = new v2(0, 0);
+        // this.mousePos = new v2(0, 0);
         this.vel = new v2(0, 0);
         this.tutorial = new Tutorial();
         this.bullets = [];
@@ -551,6 +572,11 @@ class Game {
         if (this.player.health <= 0.0) {
             dt /= 50;
         }
+
+        // Update camera
+
+        this.camera.setTarget(this.player.pos);
+        this.camera.update(dt);
 
         this.player.update(dt, this.vel);
         this.tutorial.update(dt);
@@ -650,12 +676,23 @@ class Game {
             this.tutorial.render(this.camera);
         }
 
-        // Health bar render
-        this.camera.fillRect(globalWidth / 4, globalHeight - healthBarHeight - 20, (globalWidth / 2) * (this.player.health / playerMaxHealth), healthBarHeight, healthBarColour.withAlpha(0.9));
-        this.camera.strokeRect(globalWidth / 4, globalHeight - healthBarHeight - 20, globalWidth / 2, healthBarHeight); // frame
+        // Health Bar - fixed to top center
+        const healthBarWidth = globalWidth / 2;
+        const healthBarX = (globalWidth - healthBarWidth) / 2;
+        const healthBarY = 20;
 
-        // Score render
-        this.camera.scoreText(globalWidth / 2, 40, `SCORE: ${this.score}`, messageColour.withAlpha(0.5));
+        context.fillStyle = healthBarColour.withAlpha(0.9).toRgba();
+        context.fillRect(healthBarX, healthBarY, healthBarWidth * (this.player.health / playerMaxHealth), healthBarHeight);
+
+        context.strokeStyle = messageColour.withAlpha(0.9).toRgba();
+        context.lineWidth = 3;
+        context.strokeRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+
+        // Score Text - fixed to top center
+        context.fillStyle = messageColour.withAlpha(0.5).toRgba();
+        context.font = (globalWidth < 640 ? smallFont : normalFont) + " VT323, monospace";
+        context.textAlign = 'center';
+        context.fillText(`SCORE: ${this.score}`, globalWidth / 2, 70);
     }
 
     spawnEnemy() {
@@ -710,7 +747,7 @@ class Game {
 
         this.tutorial.playerShot();
         const mousePos = new v2(event.clientX, event.clientY); // client works better than screen
-        this.bullets.push(this.player.shoot(mousePos));
+        this.bullets.push(this.player.shoot(this.camera.toWorld(mousePos)));
     }
 }
 
