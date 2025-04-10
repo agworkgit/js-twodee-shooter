@@ -8,6 +8,17 @@ let globalHeight = window.innerHeight;
 let x = 0;
 let y = 0;
 
+// Shared Audio Context
+
+let sharedAudioContext;
+
+function getAudioContext() {
+    if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+        sharedAudioContext = new AudioContext();
+    }
+    return sharedAudioContext;
+}
+
 // Colour Class
 
 class Colour {
@@ -104,20 +115,31 @@ function scoreText(context, x, y, text, colour) {
 
 // Sounds
 
-const sfxBullet = document.createElement('audio');
-sfxBullet.setAttribute('id', 'bounce-sfx');
-sfxBullet.setAttribute('src', './assets/sfx/m4_suppressed.mp3');
-document.body.append(sfxBullet);
+let lastGunfireTime = 0;
+const gunfireCooldown = 0.05; // time between sound triggers
 
-const sfxPlayerHit = document.createElement('audio');
-sfxPlayerHit.setAttribute('id', 'player-hit-sfx');
-sfxPlayerHit.setAttribute('src', './assets/sfx/player_hit.mp3');
-document.body.append(sfxPlayerHit);
+let lastHitTime = 0;
+const hitCooldown = 0.1;
 
-const sfxPlayerDeath = document.createElement('audio');
-sfxPlayerDeath.setAttribute('id', 'player-death-sfx');
-sfxPlayerDeath.setAttribute('src', './assets/sfx/player_death.mp3');
-document.body.append(sfxPlayerDeath);
+let lastDeathTime = 0;
+const deathCooldown = 0.5;
+
+const audioPlay = async url => {
+    try {
+        const context = getAudioContext();
+
+        const res = await fetch(url);
+        const arrayBuffer = await res.arrayBuffer();
+        const audioBuffer = await context.decodeAudioData(arrayBuffer);
+
+        const source = context.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(context.destination);
+        source.start();
+    } catch (e) {
+        console.warn('Audio failed:', e);
+    }
+};
 
 // Pause text
 
@@ -452,11 +474,13 @@ class Player {
         const bulletVel = bulletDir.scale(bulletSpeed);
         const bulletPos = this.pos.add(bulletDir.scale(playerRadius + bulletRadius));
 
-        // Sfx
+        // Render audio trigger
 
-        sfxBullet.pause();
-        sfxBullet.currentTime = 0; // reset playhead
-        sfxBullet.play();
+        const now = performance.now() / 1000;
+        if (now - lastGunfireTime > gunfireCooldown) {
+            audioPlay('assets/sfx/m4_suppressed.mp3');
+            lastGunfireTime = now;
+        }
 
         return new Bullet(bulletPos, bulletVel); // create new bullet instance, add it to bullets
     }
@@ -464,12 +488,12 @@ class Player {
     damage(value) {
         this.health = Math.max(this.health - value, 0.0);
 
-        // Sfx
+        // Sfx Render
 
-        if (this.health > 1) {
-            sfxPlayerHit.pause();
-            sfxPlayerHit.currentTime = 0; // reset playhead
-            sfxPlayerHit.play();
+        const now = performance.now() / 1000;
+        if (this.health > 1 && now - lastHitTime > hitCooldown) {
+            audioPlay('assets/sfx/player_hit.mp3');
+            lastHitTime = now;
         }
     }
 
@@ -547,9 +571,11 @@ class Game {
 
                         // Death Sfx
 
-                        sfxPlayerDeath.pause();
-                        sfxPlayerDeath.currentTime = 0; // reset playhead
-                        sfxPlayerDeath.play();
+                        const now = performance.now() / 1000;
+                        if (now - lastDeathTime > deathCooldown) {
+                            audioPlay('assets/sfx/player_death.mp3');
+                            lastDeathTime = now;
+                        }
                     }
                     enemy.dead = true;
                     particleBurst(this.particles, enemy.pos, playerColour);
