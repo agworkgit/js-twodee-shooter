@@ -75,7 +75,7 @@ function fillCircle(context, center, playerRadius, colour) {
 // For health bar
 
 function strokeRect(context, x, y, w, h) {
-    context.strokeStyle = "white";
+    context.strokeStyle = 'rgba(255,255,255,0.8)';
     context.lineWidth = 3;
     context.strokeRect(x, y, w, h);
 }
@@ -83,6 +83,23 @@ function strokeRect(context, x, y, w, h) {
 function fillRect(context, x, y, w, h, colour) {
     context.fillStyle = globalFillFilter(colour).toRgba();
     context.fillRect(x, y, w, h);
+}
+
+// For score
+
+function scoreText(context, x, y, text, colour) {
+    context.fillStyle = colour.toRgba();
+
+    // If small screen update font
+
+    if (globalWidth < 640) {
+        context.font = `${smallFont} VT323`;
+    } else {
+        context.font = `${normalFont} VT323`;
+    }
+
+    context.textAlign = 'center';
+    context.fillText(text, x, y);
 }
 
 // Sounds
@@ -136,6 +153,7 @@ const enemySpawnCooldown = 1;
 const enemySpawnDistance = 500;
 const enemyDamage = playerMaxHealth / 5;
 const enemyKillHealer = playerMaxHealth / 20;
+const enemyKillScore = 100;
 
 const particleCount = 50;
 const particleRadius = 5;
@@ -465,6 +483,7 @@ class Player {
 class Game {
     constructor() {
         this.player = new Player(new v2(globalWidth / 2, globalHeight / 2));
+        this.score = 0;
         this.mousePos = new v2(0, 0);
         this.vel = new v2(0, 0);
         this.tutorial = new Tutorial();
@@ -509,6 +528,7 @@ class Game {
             if (!enemy.dead) {
                 for (let bullet of this.bullets) {
                     if (enemy.pos.dist(bullet.pos) <= bulletRadius + enemyRadius) {
+                        this.score += enemyKillScore;
                         this.player.heal(enemyKillHealer);
                         enemy.dead = true;
                         bullet.lifetime = 0;
@@ -580,8 +600,11 @@ class Game {
         }
 
         // Health bar render
-        fillRect(context, globalWidth / 4, globalHeight - healthBarHeight - 20, (globalWidth / 2) * (this.player.health / playerMaxHealth), healthBarHeight, healthBarColour);
+        fillRect(context, globalWidth / 4, globalHeight - healthBarHeight - 20, (globalWidth / 2) * (this.player.health / playerMaxHealth), healthBarHeight, healthBarColour.withAlpha(0.9));
         strokeRect(context, globalWidth / 4, globalHeight - healthBarHeight - 20, globalWidth / 2, healthBarHeight); // frame
+
+        // Score render
+        scoreText(context, globalWidth / 2, 40, `SCORE: ${this.score}`, messageColour.withAlpha(0.5));
     }
 
     spawnEnemy() {
