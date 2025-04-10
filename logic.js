@@ -64,6 +64,7 @@ const playerColour = Colour.hex('#72b1e5');
 const playerRadius = 48;
 const playerSpeed = 600;
 const playerMaxHealth = 100;
+const playerTrailFadoutRate = 3.0;
 
 const bulletColour = Colour.hex('#e7b80b');
 const bulletRadius = 6;
@@ -484,19 +485,35 @@ class Bullet {
 
 class Player {
     health = playerMaxHealth;
+    trail = [];
 
     constructor(pos) {
         this.pos = pos;
     }
 
     render(camera) {
+        for (let dot of this.trail) {
+            camera.fillCircle(dot.pos, playerRadius, playerColour.withAlpha(dot.alpha));
+        }
+
         if (this.health > 0) {
             camera.fillCircle(this.pos, playerRadius, playerColour);
         }
     }
 
     update(dt, vel) {
+        this.trail.push({
+            pos: this.pos,
+            alpha: 0.5,
+        });
         this.pos = this.pos.add(vel.scale(dt));
+
+
+        for (let dot of this.trail) {
+            dot.alpha -= playerTrailFadoutRate * dt;
+        }
+
+        this.trail = this.trail.filter(x => x.alpha > 0.0);
     }
 
     shoot(target) {
