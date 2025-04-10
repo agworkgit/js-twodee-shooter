@@ -74,44 +74,97 @@ function idFilter(colour) {
 
 let globalFillFilter = idFilter;
 
-// Draw Shapes
+// Camera class
 
-function fillCircle(context, center, playerRadius, colour) {
-    context.beginPath();
-    context.arc(center.x, center.y, playerRadius, 0, 2 * Math.PI, false);
-    context.fillStyle = globalFillFilter(colour).toRgba();
-    context.fill();
-}
+class Camera {
+    pos = new v2(0, 0);
+    vel = new v2(0, 0);
 
-// For health bar
-
-function strokeRect(context, x, y, w, h) {
-    context.strokeStyle = 'rgba(255,255,255,0.8)';
-    context.lineWidth = 3;
-    context.strokeRect(x, y, w, h);
-}
-
-function fillRect(context, x, y, w, h, colour) {
-    context.fillStyle = globalFillFilter(colour).toRgba();
-    context.fillRect(x, y, w, h);
-}
-
-// For score
-
-function scoreText(context, x, y, text, colour) {
-    context.fillStyle = colour.toRgba();
-
-    // If small screen update font
-
-    if (globalWidth < 640) {
-        context.font = `${smallFont} VT323`;
-    } else {
-        context.font = `${normalFont} VT323`;
+    constructor(context) {
+        this.context = context;
     }
 
-    context.textAlign = 'center';
-    context.fillText(text, x, y);
+    update(dt) {
+
+    }
+
+    clear() {
+        const width = this.context.canvas.width;
+        const height = this.context.canvas.height;
+        this.context.clearRect(0, 0, width, height);
+    }
+
+    width() {
+        return this.context.canvas.width;
+    }
+
+    height() {
+        return this.context.canvas.height;
+    }
+
+    // Draw Shapes
+
+    fillCircle(centre, playerRadius, colour) {
+        let screenCentre = centre.sub(this.pos);
+
+        this.context.fillStyle = globalFillFilter(colour).toRgba();
+        this.context.beginPath();
+        this.context.arc(screenCentre.x, screenCentre.y, playerRadius, 0, 2 * Math.PI, false);
+        this.context.fill();
+    }
+
+    // For health bar
+
+    strokeRect(x, y, w, h) {
+        this.context.strokeStyle = 'rgba(255,255,255,0.8)';
+        this.context.lineWidth = 3;
+        this.context.strokeRect(x, y, w, h);
+    }
+
+    fillRect(x, y, w, h, colour) {
+        let screenPos = new v2(x, y).sub(this.pos);
+
+        this.context.fillStyle = globalFillFilter(colour).toRgba();
+        this.context.fillRect(screenPos.x, screenPos.y, w, h);
+    }
+
+    // For score
+
+    scoreText(x, y, text, colour) {
+        let screenPos = new v2(x, y).sub(this.pos);
+
+        this.context.fillStyle = colour.toRgba();
+
+        // If small screen update font
+
+        if (globalWidth < 640) {
+            this.context.font = `${smallFont} VT323, monospace`;
+        } else {
+            this.context.font = `${normalFont} VT323, monospace`;
+        }
+
+        this.context.textAlign = 'center';
+        this.context.fillText(text, screenPos.x, screenPos.y);
+    }
+
+    // Pause text
+
+    fillMessage(text, colour) {
+        this.context.fillStyle = colour.toRgba();
+
+        // If small screen update font
+
+        if (globalWidth < 640) {
+            this.context.font = `${smallFont} VT323, monospace`;
+        } else {
+            this.context.font = `${normalFont} VT323, monospace`;
+        }
+
+        this.context.textAlign = 'center';
+        this.context.fillText(text, globalWidth / 2, globalHeight / 2 + 5);
+    }
 }
+
 
 // Sounds
 
@@ -140,23 +193,6 @@ const audioPlay = async url => {
         console.warn('Audio failed:', e);
     }
 };
-
-// Pause text
-
-function fillMessage(context, text, colour) {
-    context.fillStyle = colour.toRgba();
-
-    // If small screen update font
-
-    if (globalWidth < 640) {
-        context.font = `${smallFont} VT323`;
-    } else {
-        context.font = `${normalFont} VT323`;
-    }
-
-    context.textAlign = 'center';
-    context.fillText(text, globalWidth / 2, globalHeight / 2 + 5);
-}
 
 const playerColour = Colour.hex('#72b1e5');
 const playerRadius = 48;
@@ -269,9 +305,9 @@ class Particle {
         this.colour = colour;
     }
 
-    render(context) {
+    render(camera) {
         const particleAlpha = this.lifetime / particleLifetime;
-        fillCircle(context, this.pos, this.radius, this.colour.withAlpha(particleAlpha));
+        camera.fillCircle(this.pos, this.radius, this.colour.withAlpha(particleAlpha));
     }
 
     update(dt) {
@@ -295,7 +331,7 @@ function particleBurst(particles, centre, colour) {
     }
 }
 
-// Game State Class
+// Tutorial State Class
 
 const tutorialState = Object.freeze({
     learningToMove: 0,
@@ -325,8 +361,8 @@ class Tutorial {
         this.popup.update(dt);
     }
 
-    render(context) {
-        this.popup.render(context);
+    render(camera) {
+        this.popup.render(camera);
     }
 
     playerMoved() {
@@ -376,19 +412,8 @@ class TutorialPopup {
         }
     }
 
-    render(context) {
-        context.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
-
-        // If small screen update font
-
-        if (globalWidth < 640) {
-            context.font = `${smallFont} VT323`;
-        } else {
-            context.font = `${normalFont} VT323`;
-        }
-
-        context.textAlign = 'center';
-        context.fillText(this.text, globalWidth / 2, globalHeight / 2 + 5);
+    render(camera) {
+        camera.fillMessage(this.text, messageColour.withAlpha(this.alpha));
     }
 
     fadeIn() {
@@ -416,8 +441,8 @@ class Enemy {
         this.pos = this.pos.add(vel);
     }
 
-    render(context) {
-        fillCircle(context, this.pos, enemyRadius, enemyColour);
+    render(camera) {
+        camera.fillCircle(this.pos, enemyRadius, enemyColour);
     }
 }
 
@@ -435,16 +460,8 @@ class Bullet {
         this.lifetime -= dt;
     }
 
-    render(context) {
-        fillCircle(context, this.pos, bulletRadius, bulletColour.withAlpha(0.8));
-    }
-}
-
-// Render Entities
-
-function renderEntities(context, entities) {
-    for (let entity of entities) {
-        entity.render(context);
+    render(camera) {
+        camera.fillCircle(this.pos, bulletRadius, bulletColour.withAlpha(0.8));
     }
 }
 
@@ -457,9 +474,9 @@ class Player {
         this.pos = pos;
     }
 
-    render(context) {
+    render(camera) {
         if (this.health > 0) {
-            fillCircle(context, this.pos, playerRadius, playerColour);
+            camera.fillCircle(this.pos, playerRadius, playerColour);
         }
     }
 
@@ -505,7 +522,7 @@ class Player {
 // Game
 
 class Game {
-    constructor() {
+    constructor(context) {
         this.player = new Player(new v2(globalWidth / 2, globalHeight / 2));
         this.score = 0;
         this.mousePos = new v2(0, 0);
@@ -517,6 +534,8 @@ class Game {
         this.enemySpawnRate = enemySpawnCooldown;
         this.enemySpawnCooldown = this.enemySpawnRate;
         this.paused = false;
+
+        this.camera = new Camera(context);
 
         canvas.addEventListener('keyup', (event) => this.keyUp(event));
         canvas.addEventListener('keydown', (event) => this.keyDown(event));
@@ -601,36 +620,42 @@ class Game {
         }
     }
 
-    render(context) {
-        const width = context.canvas.width;
-        const height = context.canvas.height;
+    // Render Entities
 
+    renderEntities(entities) {
+        for (let entity of entities) {
+            entity.render(this.camera);
+        }
+    }
+
+    render() {
+        const width = this.camera.width();
+        const height = this.camera.height();
         // Makes BG transparent - BG colour can now be changed in CSS
-        context.clearRect(0, 0, width, height);
-
-        renderEntities(context, this.bullets);
-        renderEntities(context, this.particles);
-        renderEntities(context, this.enemies);
-
+        this.camera.clear();
         // Draw Circle
-        this.player.render(context);
+        this.player.render(this.camera);
+
+        this.renderEntities(this.bullets);
+        this.renderEntities(this.particles);
+        this.renderEntities(this.enemies);
 
         // Prevent tutorial render if paused
         if (this.paused) {
             // Instructions
-            fillMessage(context, "Game paused, press 'SPACE' to resume", messageColour);
+            this.camera.fillMessage("Game paused, press 'SPACE' to resume", messageColour);
         } else if (this.player.health <= 0) {
-            fillMessage(context, "Fading into oblivion, 'F5 (Win) or CMD+R (Mac)' to restart", enemyColour);
+            this.camera.fillMessage("Fading into oblivion, 'F5 (Win) or CMD+R (Mac)' to restart", enemyColour);
         } else {
-            this.tutorial.render(context);
+            this.tutorial.render(this.camera);
         }
 
         // Health bar render
-        fillRect(context, globalWidth / 4, globalHeight - healthBarHeight - 20, (globalWidth / 2) * (this.player.health / playerMaxHealth), healthBarHeight, healthBarColour.withAlpha(0.9));
-        strokeRect(context, globalWidth / 4, globalHeight - healthBarHeight - 20, globalWidth / 2, healthBarHeight); // frame
+        this.camera.fillRect(globalWidth / 4, globalHeight - healthBarHeight - 20, (globalWidth / 2) * (this.player.health / playerMaxHealth), healthBarHeight, healthBarColour.withAlpha(0.9));
+        this.camera.strokeRect(globalWidth / 4, globalHeight - healthBarHeight - 20, globalWidth / 2, healthBarHeight); // frame
 
         // Score render
-        scoreText(context, globalWidth / 2, 40, `SCORE: ${this.score}`, messageColour.withAlpha(0.5));
+        this.camera.scoreText(globalWidth / 2, 40, `SCORE: ${this.score}`, messageColour.withAlpha(0.5));
     }
 
     spawnEnemy() {
@@ -689,7 +714,7 @@ class Game {
     }
 }
 
-const game = new Game();
+const game = new Game(context);
 
 // Animation Frames - Event Loop
 
@@ -708,7 +733,7 @@ function step(timestamp) {
     canvas.height = height;
 
     game.update(dt);
-    game.render(context);
+    game.render(); // the game has it's context inside the camera
 
     window.requestAnimationFrame(step);
 }
