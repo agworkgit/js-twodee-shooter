@@ -8,8 +8,6 @@ The main goals of the player are to avoid dying and collect as many points as po
 
 # Quick Start
 
-This project is created in vanilla JS, to get it running:
-
 1. Open index.html in a browser if you copy the repo or visit the GitHub Pages link
 2. To make the object move around the canvas press 'W', 'A', 'S' or 'D'
 3. To aim move the mouse
