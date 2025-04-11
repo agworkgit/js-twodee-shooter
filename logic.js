@@ -64,10 +64,10 @@ const playerColour = Colour.hex('#72b1e5');
 const playerRadius = 48;
 const playerSpeed = 600;
 const playerMaxHealth = 100;
-const playerTrailFadoutRate = 4.0;
+const playerTrailFadoutRate = 2.0;
 
 const bulletColour = Colour.hex('#e7b80b');
-const bulletRadius = 6;
+const bulletRadius = 15;
 const bulletSpeed = playerSpeed * 3;
 const bulletLifetime = 5; // important - prevents memory overflow
 
@@ -94,6 +94,7 @@ const normalFont = '32px';
 const healthBarHeight = 15;
 const healthBarColour = Colour.hex('#51bb51');
 
+const trailCooldown = 1 / 120;
 
 // b&w for pause screen
 
@@ -446,11 +447,12 @@ class TutorialPopup {
 
 class Trail {
     trail = [];
+    cooldown = 0;
 
-    constructor(radius, colour, fadeout) {
+    constructor(radius, colour, rate) {
         this.radius = radius;
         this.colour = colour;
-        this.fadeout = fadeout;
+        this.rate = rate;
     }
 
     render(camera) {
@@ -459,7 +461,10 @@ class Trail {
         // Trail cones towards the end
 
         for (let i = 0; i < n; i++) {
-            camera.fillCircle(this.trail[i].pos, this.radius * (i / n), this.colour.withAlpha(0.3 * this.trail[i].alpha)); // rev lerp (i / n)
+            camera.fillCircle(
+                this.trail[i].pos,
+                this.radius * (i / n),
+                this.colour.withAlpha(0.3 * this.trail[i].alpha)); // rev lerp (i / n)
         }
     }
 
@@ -467,17 +472,24 @@ class Trail {
         // Shows player trail for camera reference
 
         for (let dot of this.trail) {
-            dot.alpha -= this.fadeout * dt;
+            dot.alpha -= this.rate * dt;
         }
 
-        this.trail = this.trail.filter(x => x.alpha > 0.0);
+        while (this.trail.length > 0 && this.trail[0].alpha <= 0) {
+            this.trail.shift();
+        }
+
+        this.cooldown -= dt;
     }
 
     push(pos) {
-        this.trail.push({
-            pos: pos,
-            alpha: 1,
-        });
+        if (this.cooldown <= 0) {
+            this.trail.push({
+                pos: pos,
+                alpha: 1,
+            });
+            this.cooldown = trailCooldown;
+        }
     }
 }
 
@@ -797,6 +809,7 @@ function step(timestamp) {
     }
     const dt = (timestamp - start) / 1000;
     start = timestamp;
+    // console.log(dt);
 
     let width = window.innerWidth;
     let height = window.innerHeight;
