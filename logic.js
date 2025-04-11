@@ -448,6 +448,7 @@ class TutorialPopup {
 class Trail {
     trail = [];
     cooldown = 0;
+    disabled = false;
 
     constructor(radius, colour, rate) {
         this.radius = radius;
@@ -463,7 +464,7 @@ class Trail {
         for (let i = 0; i < n; i++) {
             camera.fillCircle(
                 this.trail[i].pos,
-                this.radius * (i / n),
+                this.radius * this.trail[i].alpha,
                 this.colour.withAlpha(0.3 * this.trail[i].alpha)); // rev lerp (i / n)
         }
     }
@@ -483,7 +484,7 @@ class Trail {
     }
 
     push(pos) {
-        if (this.cooldown <= 0) {
+        if (!this.disabled && this.cooldown <= 0) {
             this.trail.push({
                 pos: pos,
                 alpha: 1,
@@ -668,7 +669,13 @@ class Game {
             if (this.player.health > 0 && !enemy.dead) {
                 if (enemy.pos.dist(this.player.pos) <= playerRadius + enemyRadius) {
                     this.player.damage(enemyDamage);
+
                     if (this.player.health <= 0) {
+                        this.player.trail.disabled = true;
+                        for (let enemy of this.enemies) {
+                            enemy.trail.disabled = true;
+                        }
+
                         globalFillFilter = grayScaleFilter;
 
                         // Death Sfx
